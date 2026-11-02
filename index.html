@@ -94,7 +94,7 @@
 
   <div class="card">
     <div class="tabs" id="tfs">
-      <button data-tf="15m">15د</button><button data-tf="1h">1س</button><button data-tf="4h" class="on">4س</button><button data-tf="1d">يومي</button>
+      <button data-tf="1m">1د</button><button data-tf="15m">15د</button><button data-tf="1h">1س</button><button data-tf="4h" class="on">4س</button><button data-tf="1d">يومي</button>
     </div>
     <div id="chart" style="margin-top:10px"></div>
   </div>
@@ -186,9 +186,9 @@
 <script>
 const SYM = 'PAXGUSDT';
 const APIS = ['https://data-api.binance.vision', 'https://api.binance.com'];
-const TFS = ['15m', '1h', '4h', '1d'];
-const TF_AR = { '15m': '15د', '1h': '1س', '4h': '4س', '1d': 'يومي' };
-const TF_W = { '15m': 1, '1h': 2, '4h': 3, '1d': 2 };
+const TFS = ['1m', '15m', '1h', '4h', '1d'];
+const TF_AR = { '1m': '1د', '15m': '15د', '1h': '1س', '4h': '4س', '1d': 'يومي' };
+const TF_W = { '1m': 0.5, '15m': 1, '1h': 2, '4h': 3, '1d': 2 };
 const SL_ATR = 1.5, TP1_ATR = 1.5, TP2_ATR = 3, TH = 35;
 let tf = '4h', data = {}, spot = null, chart, candle, e20s, e50s, e200s, lastSig = localStorage.getItem('lastSig');
 
@@ -308,8 +308,8 @@ function drawChart() {
 }
 
 /* ---------- higher-timeframe trend filter ---------- */
-const TF_SEC = { '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
-const FILTER_TF = { '15m': '4h', '1h': '4h', '4h': '1d', '1d': null };
+const TF_SEC = { '1m': 60, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
+const FILTER_TF = { '1m': '15m', '15m': '4h', '1h': '4h', '4h': '1d', '1d': null };
 function trendDir(I, j) {
   if (j < 0 || isNaN(I.e200[j])) return 0;
   if (I.e20[j] > I.e50[j] && I.c[j] > I.e200[j]) return 1;
@@ -516,7 +516,7 @@ function buildAnalysis(sig, mtf) {
   p.push(`<p>⚡ <b>الزخم (${TF_AR[tf]}):</b> RSI <span class="num">${f2(r)}</span> ${rTxt}، MACD ${I.hist[i] > I.hist[i - 1] ? 'عم يقوى للطلوع' : 'عم يضعف/ينزل'}، والترند ${I.adx[i] > 25 ? 'قوي' : I.adx[i] < 20 ? 'ضعيف (السوق متذبذب)' : 'متوسط'} (ADX <span class="num">${f2(I.adx[i])}</span>).</p>`);
   p.push(`<p>🎯 <b>المناطق:</b> أقرب منطقة شراء ${D0 ? z(D0) + ' ' + stars(D0.score) : '—'}، وأقرب منطقة بيع ${S0 ? z(S0) + ' ' + stars(S0.score) : '—'}. ${F.up ? 'آخر موجة صاعدة' : 'آخر موجة هابطة'}، والمنطقة الذهبية لفيبوناتشي (50–61.8%) بين <span class="num">${f2(gz[0])} – ${f2(gz[1])}</span>.</p>`);
   const dirTxt = P.end.c > P.p0 ? 'طلوع' : 'نزول';
-  p.push(`<p>🔮 <b>التوقع للـ ${P.N} شمعة الجاية (حوالي ${P.hours >= 24 ? (P.hours / 24).toFixed(0) + ' يوم' : P.hours.toFixed(0) + ' ساعة'}):</b> الميل نحو ال${dirTxt}، المستوى المتوقع حوالي <span class="num">${f2(P.end.c)}</span>، والنطاق المرجّح (احتمال ~68%) بين <span class="num">${f2(P.end.l)} – ${f2(P.end.u)}</span>. احتمال إنو يسكّر أعلى من هلّق: <b class="num">${(P.pUp * 100).toFixed(0)}%</b>. (الخط المتقطع عالشارت)</p>`);
+  p.push(`<p>🔮 <b>التوقع للـ ${P.N} شمعة الجاية (حوالي ${P.hours >= 24 ? (P.hours / 24).toFixed(0) + ' يوم' : P.hours >= 1 ? P.hours.toFixed(0) + ' ساعة' : (P.hours * 60).toFixed(0) + ' دقيقة'}):</b> الميل نحو ال${dirTxt}، المستوى المتوقع حوالي <span class="num">${f2(P.end.c)}</span>، والنطاق المرجّح (احتمال ~68%) بين <span class="num">${f2(P.end.l)} – ${f2(P.end.u)}</span>. احتمال إنو يسكّر أعلى من هلّق: <b class="num">${(P.pUp * 100).toFixed(0)}%</b>. (الخط المتقطع عالشارت)</p>`);
   const nextSup = S0 && Z.sup.find(s => s.bot > S0.top), nextDem = D0 && Z.dem.find(s => s.top < D0.bot);
   const bullT = nextSup ? nextSup.bot : S0 ? S0.top + 2 * Z.A : price + 3 * Z.A, bearT = nextDem ? nextDem.top : D0 ? D0.bot - 2 * Z.A : price - 3 * Z.A;
   p.push(`<p>🟢 <b>سيناريو الصعود:</b> ${S0 ? `إذا اخترق وثبّت فوق <span class="num">${f2(S0.top)}</span>` : 'إذا كمّل فوق القمة الأخيرة'} ← الهدف الجاي <span class="num">${f2(bullT)}</span>.<br>
