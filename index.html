@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Gold AI - محلل الذهب</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --line:#262a33; --txt:#e8e8ea; --mut:#8b90a0; --gold:#e6b422; --up:#22c55e; --down:#ef4444; --wait:#a1a1aa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font-family:"Segoe UI",Tahoma,Arial,sans-serif; padding:env(safe-area-inset-top) 0 80px; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; position:sticky; top:0; background:var(--bg); z-index:5; border-bottom:1px solid var(--line); }
+  header h1 { font-size:18px; margin:0; color:var(--gold); }
+  header button { background:none; border:1px solid var(--line); color:var(--txt); border-radius:10px; padding:6px 10px; font-size:14px; }
+  .wrap { padding:12px; max-width:900px; margin:auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .price { font-size:34px; font-weight:700; direction:ltr; text-align:right; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+  .mut { color:var(--mut); font-size:13px; }
+  .num { direction:ltr; unicode-bidi:embed; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .tabs { display:flex; gap:6px; }
+  .tabs button { flex:1; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:10px; padding:8px 0; font-size:14px; }
+  .tabs button.on { background:var(--gold); color:#111; border-color:var(--gold); font-weight:700; }
+  #chart { height:340px; border-radius:12px; overflow:hidden; }
+  .sig { text-align:center; padding:18px 10px; border-radius:14px; }
+  .sig .big { font-size:36px; font-weight:800; letter-spacing:1px; }
+  .sig.BUY { background:rgba(34,197,94,.12); border:1px solid var(--up); } .sig.BUY .big { color:var(--up); }
+  .sig.SELL { background:rgba(239,68,68,.12); border:1px solid var(--down); } .sig.SELL .big { color:var(--down); }
+  .sig.WAIT { background:rgba(161,161,170,.10); border:1px solid var(--wait); } .sig.WAIT .big { color:var(--wait); }
+  .bar { height:8px; background:var(--line); border-radius:6px; overflow:hidden; margin-top:8px; }
+  .bar > div { height:100%; background:var(--gold); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { padding:8px 6px; border-bottom:1px solid var(--line); text-align:right; }
+  th { color:var(--mut); font-weight:500; }
+  .levels td:last-child { direction:ltr; text-align:left; font-weight:700; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; }
+  .stat { background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px; text-align:center; }
+  .stat b { display:block; font-size:20px; direction:ltr; }
+  input, select { width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:10px; padding:10px; font-size:15px; }
+  label { font-size:13px; color:var(--mut); display:block; margin:8px 0 4px; }
+  .btn { width:100%; background:var(--gold); color:#111; border:none; border-radius:12px; padding:12px; font-size:16px; font-weight:700; margin-top:10px; }
+  .btn.ghost { background:none; color:var(--txt); border:1px solid var(--line); }
+  #ai { white-space:pre-wrap; line-height:1.7; font-size:15px; }
+  .warn { font-size:12px; color:var(--mut); line-height:1.6; }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:flex-end; z-index:20; }
+  .modal.show { display:flex; }
+  .sheet { background:var(--card); width:100%; max-width:600px; margin:auto; border-radius:18px 18px 0 0; padding:16px; max-height:90vh; overflow:auto; }
+  h2 { font-size:16px; margin:0 0 10px; }
+  .pill { display:inline-block; padding:3px 9px; border-radius:20px; font-size:12px; border:1px solid var(--line); margin:2px; }
+  .pill.up { border-color:var(--up); } .pill.down { border-color:var(--down); }
+  #status { font-size:12px; }
+  .analysis p { margin:0 0 10px; line-height:1.75; font-size:14.5px; }
+  .analysis b { color:var(--gold); }
+  .zone-D td:first-child { color:var(--up); } .zone-S td:first-child { color:var(--down); }
+  .idea { background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:8px; font-size:14px; line-height:1.8; }
+  .idea.pref { border-color:var(--gold); }
+  .ev { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-bottom:1px solid var(--line); }
+  .ev .imp { width:10px; height:10px; border-radius:50%; margin-top:6px; flex:none; }
+  .ev .imp.High { background:var(--down); } .ev .imp.Medium { background:#f59e0b; }
+  .ev .t { font-size:13px; color:var(--mut); }
+  .ev .eff { font-size:13px; line-height:1.7; margin-top:4px; }
+  #newsbanner { border-color:#f59e0b; background:rgba(245,158,11,.1); font-weight:600; line-height:1.7; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🥇 Gold AI</h1>
+  <div>
+    <span id="status" class="mut">...</span>
+    <button onclick="openSettings()">⚙️</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="row">
+      <div>
+        <div class="mut">الذهب XAU/USD (سعر فوري)</div>
+        <div class="price" id="spot">—</div>
+      </div>
+      <div style="text-align:left">
+        <div id="chg" class="num">—</div>
+        <div class="mut num" id="hl">—</div>
+      </div>
+    </div>
+    <div class="mut" id="feed" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card">
+    <div class="tabs" id="tfs">
+      <button data-tf="15m">15د</button><button data-tf="1h">1س</button><button data-tf="4h" class="on">4س</button><button data-tf="1d">يومي</button>
+    </div>
+    <div id="chart" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h2>الإشارة الحالية</h2>
+    <div class="sig WAIT" id="sigbox">
+      <div class="big" id="sig">...</div>
+      <div id="sigtxt" class="mut"></div>
+      <div class="bar"><div id="confbar" style="width:0"></div></div>
+      <div class="mut" style="margin-top:6px">قوة التوافق: <b id="conf" class="num">0%</b></div>
+    </div>
+    <table class="levels" style="margin-top:10px" id="levels"></table>
+    <div id="mtf" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card" id="newsbanner" style="display:none"></div>
+
+  <div class="card">
+    <h2>📝 التحليل والتوقع</h2>
+    <div id="analysis" class="analysis">...</div>
+  </div>
+
+  <div class="card">
+    <h2>🎯 مناطق البيع والشراء</h2>
+    <div class="mut">مناطق العرض والطلب: قمم وقيعان مهمة، ومناطق انطلقت منها حركات قوية (Order Blocks)، من فريمات الساعة والـ 4 ساعات واليومي. كل ما زادت النجوم، كل ما كانت المنطقة أقوى.</div>
+    <table id="zones" style="margin-top:8px"></table>
+    <h2 style="margin-top:14px">💡 أفكار صفقات من المناطق</h2>
+    <div id="ideas"></div>
+    <h2 style="margin-top:14px">📐 فيبوناتشي (آخر موجة على 4س)</h2>
+    <table id="fib" class="levels"></table>
+  </div>
+
+  <div class="card">
+    <h2>📰 الأخبار الاقتصادية المهمة (الدولار)</h2>
+    <div class="mut">أخبار أمريكا بتحرّك الذهب بقوة. ما تفوت صفقات جديدة قبل الأخبار الحمراء بساعة.</div>
+    <div id="news" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h2>المؤشرات (<span id="tfname">4س</span>)</h2>
+    <table id="ind"></table>
+  </div>
+
+  <div class="card">
+    <h2>🤖 تحليل الذكاء الاصطناعي</h2>
+    <div id="ai" class="mut">اكبس الزر ليحلل الـ AI كل المؤشرات والفريمات ويعطيك خطة. (بدها مفتاح API من الإعدادات ⚙️)</div>
+    <button class="btn" onclick="runAI()">حلّل بالـ AI</button>
+  </div>
+
+  <div class="card">
+    <h2>📊 اختبار الاستراتيجية على الماضي (Backtest)</h2>
+    <div class="mut">نفس قواعد الإشارة مطبقة على آخر 1000 شمعة من الفريم المختار. هيدا الرقم الحقيقي لدقة الإشارات.</div>
+    <div class="grid" style="margin-top:10px" id="bt"></div>
+  </div>
+
+  <div class="card">
+    <h2>🧮 حاسبة حجم الصفقة</h2>
+    <div class="grid">
+      <div><label>رأس المال ($)</label><input id="bal" type="number" value="1000" inputmode="decimal"></div>
+      <div><label>المخاطرة لكل صفقة (%)</label><input id="risk" type="number" value="1" step="0.5" inputmode="decimal"></div>
+    </div>
+    <table style="margin-top:10px" id="calc"></table>
+  </div>
+
+  <div class="card warn">
+    ⚠️ هيدا التطبيق أداة تحليل وتعليم، مش نصيحة مالية. ما في أي نظام (AI أو بشري) بيعطي صفقات بلا أخطاء. السوق فيه أخبار ومفاجآت ما حدا بيتوقعها. شوف نسبة النجاح الحقيقية بالـ Backtest، التزم دايماً بوقف الخسارة، وما تخاطر بأكتر من 1–2% من رأس مالك بالصفقة.
+    <br>الشموع من Binance (PAXG/USDT، توكن مغطى بالذهب ويمشي مع سعر الذهب الفوري بفرق صغير)، والسعر الفوري من gold-api.com.
+  </div>
+</div>
+
+<div class="modal" id="settings" onclick="if(event.target===this)closeSettings()">
+  <div class="sheet">
+    <h2>⚙️ الإعدادات</h2>
+    <label>مفتاح الـ AI (API Key)</label>
+    <input id="k" type="password" placeholder="sk-...">
+    <label>رابط الخدمة (OpenAI-compatible)</label>
+    <input id="u" placeholder="https://api.openai.com/v1">
+    <label>الموديل</label>
+    <input id="m" placeholder="gpt-4o-mini">
+    <label>تنبيه لما تتغير الإشارة</label>
+    <select id="n"><option value="1">مفعّل</option><option value="0">مطفي</option></select>
+    <div class="warn" style="margin-top:8px">المفتاح بيضل محفوظ على تلفونك بس، وما بينبعت إلا لخدمة الـ AI يلي حاطط رابطها.</div>
+    <button class="btn" onclick="saveSettings()">حفظ</button>
+    <button class="btn ghost" onclick="closeSettings()">إلغاء</button>
+  </div>
+</div>
+
+<script>
+const SYM = 'PAXGUSDT';
+const APIS = ['https://data-api.binance.vision', 'https://api.binance.com'];
+const TFS = ['15m', '1h', '4h', '1d'];
+const TF_AR = { '15m': '15د', '1h': '1س', '4h': '4س', '1d': 'يومي' };
+const TF_W = { '15m': 1, '1h': 2, '4h': 3, '1d': 2 };
+const SL_ATR = 1.5, TP1_ATR = 1.5, TP2_ATR = 3, TH = 35;
+let tf = '4h', data = {}, spot = null, chart, candle, e20s, e50s, e200s, lastSig = localStorage.getItem('lastSig');
+
+const $ = id => document.getElementById(id);
+const f2 = x => (x == null || isNaN(x)) ? '—' : Number(x).toFixed(2);
+
+/* ---------- indicators ---------- */
+function ema(src, p) {
+  const out = new Array(src.length).fill(NaN); const k = 2 / (p + 1);
+  let start = src.findIndex(v => !isNaN(v)); if (start < 0 || start + p > src.length) return out;
+  let s = 0; for (let i = start; i < start + p; i++) s += src[i];
+  out[start + p - 1] = s / p;
+  for (let i = start + p; i < src.length; i++) out[i] = src[i] * k + out[i - 1] * (1 - k);
+  return out;
+}
+function wilder(src, p) {
+  const out = new Array(src.length).fill(NaN);
+  let start = src.findIndex(v => !isNaN(v)); if (start < 0 || start + p > src.length) return out;
+  let s = 0; for (let i = start; i < start + p; i++) s += src[i];
+  out[start + p - 1] = s / p;
+  for (let i = start + p; i < src.length; i++) out[i] = (out[i - 1] * (p - 1) + src[i]) / p;
+  return out;
+}
+function rsi(c, p = 14) {
+  const g = [NaN], l = [NaN];
+  for (let i = 1; i < c.length; i++) { const d = c[i] - c[i - 1]; g.push(Math.max(d, 0)); l.push(Math.max(-d, 0)); }
+  const ag = wilder(g, p), al = wilder(l, p);
+  return ag.map((v, i) => isNaN(v) ? NaN : (al[i] === 0 ? 100 : 100 - 100 / (1 + v / al[i])));
+}
+function sma(src, p) { return src.map((_, i) => i < p - 1 ? NaN : src.slice(i - p + 1, i + 1).reduce((a, b) => a + b, 0) / p); }
+function stdev(src, p) { const m = sma(src, p); return src.map((_, i) => i < p - 1 ? NaN : Math.sqrt(src.slice(i - p + 1, i + 1).reduce((a, b) => a + (b - m[i]) ** 2, 0) / p)); }
+function indicators(k) {
+  const c = k.map(x => x.c), h = k.map(x => x.h), l = k.map(x => x.l);
+  const e20 = ema(c, 20), e50 = ema(c, 50), e200 = ema(c, 200);
+  const e12 = ema(c, 12), e26 = ema(c, 26);
+  const macd = c.map((_, i) => e12[i] - e26[i]); const sig = ema(macd, 9); const hist = macd.map((v, i) => v - sig[i]);
+  const r = rsi(c);
+  const mid = sma(c, 20), sd = stdev(c, 20); const up = mid.map((m, i) => m + 2 * sd[i]), lo = mid.map((m, i) => m - 2 * sd[i]);
+  const tr = [NaN], pdm = [NaN], mdm = [NaN];
+  for (let i = 1; i < c.length; i++) {
+    tr.push(Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])));
+    const u = h[i] - h[i - 1], d = l[i - 1] - l[i];
+    pdm.push(u > d && u > 0 ? u : 0); mdm.push(d > u && d > 0 ? d : 0);
+  }
+  const atr = wilder(tr, 14), sp = wilder(pdm, 14), sm = wilder(mdm, 14);
+  const pdi = sp.map((v, i) => 100 * v / atr[i]), mdi = sm.map((v, i) => 100 * v / atr[i]);
+  const dx = pdi.map((v, i) => { const s = v + mdi[i]; return isNaN(s) ? NaN : s === 0 ? 0 : 100 * Math.abs(v - mdi[i]) / s; });
+  const adx = wilder(dx, 14);
+  return { c, e20, e50, e200, macd, sig, hist, r, up, lo, mid, atr, pdi, mdi, adx };
+}
+function scoreAt(I, i) {
+  if (i < 1 || isNaN(I.e200[i]) || isNaN(I.adx[i]) || isNaN(I.hist[i - 1])) return { s: NaN, why: [] };
+  let s = 0; const why = [];
+  const add = (v, t) => { s += v; why.push([t, v]); };
+  add(I.e20[i] > I.e50[i] ? 20 : -20, 'EMA20 فوق/تحت EMA50');
+  add(I.c[i] > I.e200[i] ? 15 : -15, 'السعر فوق/تحت EMA200');
+  add(I.hist[i] > 0 ? 8 : -8, 'MACD هستوغرام');
+  add(I.hist[i] > I.hist[i - 1] ? 7 : -7, 'زخم MACD');
+  const r = I.r[i];
+  if (r > 70) add(-10, 'RSI تشبّع شراء'); else if (r < 30) add(10, 'RSI تشبّع بيع');
+  else if (r > 55) add(10, 'RSI إيجابي'); else if (r < 45) add(-10, 'RSI سلبي'); else add(0, 'RSI محايد');
+  add(I.pdi[i] > I.mdi[i] ? 10 : -10, '+DI مقابل -DI');
+  if (I.c[i] > I.up[i]) add(-5, 'فوق بولنجر العلوي (ممتد)'); else if (I.c[i] < I.lo[i]) add(5, 'تحت بولنجر السفلي (ممتد)');
+  if (I.adx[i] < 20) { s *= 0.5; why.push(['ADX ضعيف: السوق بلا ترند (×0.5)', 0]); }
+  else if (I.adx[i] > 25) { s *= 1.2; why.push(['ADX قوي: ترند واضح (×1.2)', 0]); }
+  return { s: Math.max(-100, Math.min(100, s)), why };
+}
+
+/* ---------- data ---------- */
+async function getJSON(path) {
+  let err; for (const base of APIS) { try { const r = await fetch(base + path, { cache: 'no-store' }); if (r.ok) return await r.json(); } catch (e) { err = e; } }
+  throw err || new Error('network');
+}
+async function loadTF(t) {
+  const raw = await getJSON(`/api/v3/klines?symbol=${SYM}&interval=${t}&limit=1000`);
+  const k = raw.map(x => ({ t: x[0] / 1000, o: +x[1], h: +x[2], l: +x[3], c: +x[4], v: +x[5] }));
+  const closed = k.slice(0, -1);
+  data[t] = { k, I: indicators(closed), closed };
+}
+async function loadSpot() {
+  try { const r = await fetch('https://api.gold-api.com/price/XAU', { cache: 'no-store' }); if (r.ok) spot = (await r.json()).price; } catch (e) {}
+  try {
+    const t = await getJSON(`/api/v3/ticker/24hr?symbol=${SYM}`);
+    $('chg').innerHTML = `<span class="${+t.priceChangePercent >= 0 ? 'up' : 'down'}">${+t.priceChangePercent >= 0 ? '▲' : '▼'} ${f2(t.priceChangePercent)}%</span>`;
+    $('hl').textContent = `H ${f2(t.highPrice)}  L ${f2(t.lowPrice)}`;
+    $('feed').innerHTML = `PAXG: <span class="num">${f2(t.lastPrice)}</span>${spot ? ` &nbsp;|&nbsp; الفرق عن الفوري: <span class="num">${f2(t.lastPrice - spot)}</span>` : ''}`;
+    if (!spot) spot = +t.lastPrice;
+  } catch (e) {}
+  $('spot').textContent = spot ? '$' + f2(spot) : '—';
+}
+
+/* ---------- chart ---------- */
+function initChart() {
+  chart = LightweightCharts.createChart($('chart'), {
+    layout: { background: { color: '#181b22' }, textColor: '#8b90a0' },
+    grid: { vertLines: { color: '#20242c' }, horzLines: { color: '#20242c' } },
+    rightPriceScale: { borderColor: '#262a33' }, timeScale: { borderColor: '#262a33', timeVisible: true },
+    crosshair: { mode: 0 }, autoSize: true,
+  });
+  candle = chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false, wickUpColor: '#22c55e', wickDownColor: '#ef4444' });
+  e20s = chart.addLineSeries({ color: '#e6b422', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+  e50s = chart.addLineSeries({ color: '#60a5fa', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+  e200s = chart.addLineSeries({ color: '#c084fc', lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+  const po = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+  projC = chart.addLineSeries({ ...po, color: '#e6b422', lineWidth: 2, lineStyle: 2 });
+  projU = chart.addLineSeries({ ...po, color: 'rgba(139,144,160,0.7)', lineWidth: 1, lineStyle: 1 });
+  projL = chart.addLineSeries({ ...po, color: 'rgba(139,144,160,0.7)', lineWidth: 1, lineStyle: 1 });
+}
+let projC, projU, projL;
+const tzOff = -new Date().getTimezoneOffset() * 60;
+function drawChart() {
+  const d = data[tf]; if (!d) return;
+  candle.setData(d.k.map(x => ({ time: x.t + tzOff, open: x.o, high: x.h, low: x.l, close: x.c })));
+  const line = arr => arr.map((v, i) => ({ time: d.closed[i].t + tzOff, value: v })).filter(p => !isNaN(p.value));
+  e20s.setData(line(d.I.e20)); e50s.setData(line(d.I.e50)); e200s.setData(line(d.I.e200));
+  candle.setMarkers(d.markers || []);
+}
+
+/* ---------- higher-timeframe trend filter ---------- */
+const TF_SEC = { '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
+const FILTER_TF = { '15m': '4h', '1h': '4h', '4h': '1d', '1d': null };
+function trendDir(I, j) {
+  if (j < 0 || isNaN(I.e200[j])) return 0;
+  if (I.e20[j] > I.e50[j] && I.c[j] > I.e200[j]) return 1;
+  if (I.e20[j] < I.e50[j] && I.c[j] < I.e200[j]) return -1;
+  return 0;
+}
+function htfSeries(t) {
+  const ft = FILTER_TF[t], k = data[t].closed;
+  if (!ft || !data[ft]) return k.map(() => null);
+  const fk = data[ft].closed, fI = data[ft].I; let j = -1;
+  return k.map(c => {
+    const closeT = c.t + TF_SEC[t];
+    while (j + 1 < fk.length && fk[j + 1].t + TF_SEC[ft] <= closeT) j++;
+    return trendDir(fI, j);
+  });
+}
+
+/* ---------- backtest ---------- */
+function backtest(t) {
+  const d = data[t]; const I = d.I, k = d.closed; const n = k.length;
+  const sc = k.map((_, i) => scoreAt(I, i).s);
+  const htf = htfSeries(t);
+  let pos = null, trades = [], markers = [];
+  for (let i = 1; i < n; i++) {
+    if (pos) {
+      const hitSL = pos.dir > 0 ? k[i].l <= pos.sl : k[i].h >= pos.sl;
+      const hitTP = pos.dir > 0 ? k[i].h >= pos.tp : k[i].l <= pos.tp;
+      if (hitSL || hitTP) { const R = hitSL ? -1 : TP2_ATR / SL_ATR; trades.push(R); pos = null; }
+      continue;
+    }
+    if (isNaN(sc[i]) || isNaN(sc[i - 1]) || i === n - 1) continue;
+    const dir = (sc[i] >= TH && sc[i - 1] < TH) ? 1 : (sc[i] <= -TH && sc[i - 1] > -TH) ? -1 : 0;
+    if (dir && (htf[i] === null || htf[i] === dir)) {
+      const e = k[i].c, a = I.atr[i];
+      pos = { dir, sl: e - dir * SL_ATR * a, tp: e + dir * TP2_ATR * a };
+      markers.push({ time: k[i].t + tzOff, position: dir > 0 ? 'belowBar' : 'aboveBar', color: dir > 0 ? '#22c55e' : '#ef4444', shape: dir > 0 ? 'arrowUp' : 'arrowDown', text: dir > 0 ? 'B' : 'S' });
+    }
+  }
+  const w = trades.filter(x => x > 0), lsum = -trades.filter(x => x < 0).reduce((a, b) => a + b, 0);
+  let eq = 0, peak = 0, dd = 0; for (const r of trades) { eq += r; peak = Math.max(peak, eq); dd = Math.max(dd, peak - eq); }
+  d.markers = markers.slice(-40);
+  return { n: trades.length, win: trades.length ? 100 * w.length / trades.length : 0, R: trades.reduce((a, b) => a + b, 0), pf: lsum ? w.reduce((a, b) => a + b, 0) / lsum : Infinity, dd, days: (k[n - 1].t - k[0].t) / 86400 };
+}
+
+/* ---------- supply / demand zones ---------- */
+const ZONE_TF_W = { '1h': 1, '4h': 2, '1d': 3 };
+function rawZones(t) {
+  const d = data[t]; if (!d) return [];
+  const k = d.closed, I = d.I, n = k.length, L = 4, A = I.atr[n - 1];
+  const zs = [];
+  for (let i = L; i < n - L; i++) {
+    let isH = true, isL = true;
+    for (let j = i - L; j <= i + L; j++) { if (k[j].h > k[i].h) isH = false; if (k[j].l < k[i].l) isL = false; }
+    if (isH) zs.push({ type: 'S', top: k[i].h, bot: Math.max(k[i].o, k[i].c), i, src: 'swing' });
+    if (isL) zs.push({ type: 'D', top: Math.min(k[i].o, k[i].c), bot: k[i].l, i, src: 'swing' });
+  }
+  for (let i = 1; i < n - 3; i++) {
+    const a = I.atr[i]; if (isNaN(a)) continue;
+    const mv = k[i + 3].c - k[i].c;
+    if (mv > 2.5 * a) zs.push({ type: 'D', top: k[i].h, bot: k[i].l, i, src: 'impulse' });
+    if (mv < -2.5 * a) zs.push({ type: 'S', top: k[i].h, bot: k[i].l, i, src: 'impulse' });
+  }
+  const alive = [];
+  for (const z of zs) {
+    const w = z.top - z.bot, minW = 0.25 * A, maxW = 1.2 * A;
+    if (w < minW) { const m = (z.top + z.bot) / 2; z.top = m + minW / 2; z.bot = m - minW / 2; }
+    if (w > maxW) { if (z.type === 'D') z.top = z.bot + maxW; else z.bot = z.top - maxW; }
+    z.touch = 0; z.tfs = [t]; let broken = false, inside = false;
+    for (let j = z.i + (z.src === 'impulse' ? 4 : L + 1); j < n; j++) {
+      if (z.type === 'D') {
+        if (k[j].c < z.bot) { broken = true; break; }
+        const hit = k[j].l <= z.top && k[j].c > z.top; if (hit && !inside) z.touch++; inside = hit;
+      } else {
+        if (k[j].c > z.top) { broken = true; break; }
+        const hit = k[j].h >= z.bot && k[j].c < z.bot; if (hit && !inside) z.touch++; inside = hit;
+      }
+    }
+    z.score = (z.src === 'impulse' ? 2 : 1) + Math.min(z.touch, 3) + ZONE_TF_W[t] + (z.i > n - 60 ? 1 : 0);
+    if (!broken) alive.push(z);
+  }
+  return alive;
+}
+function allZones() {
+  const A = data['4h'].I.atr[data['4h'].closed.length - 1];
+  const list = ['1h', '4h', '1d'].flatMap(rawZones).sort((a, b) => a.bot - b.bot);
+  const out = [];
+  for (const z of list) {
+    const m = out.find(c => c.type === z.type && z.bot <= c.top + 0.2 * A && z.top >= c.bot - 0.2 * A && Math.max(c.top, z.top) - Math.min(c.bot, z.bot) < 2 * A);
+    if (m) { m.top = Math.max(m.top, z.top); m.bot = Math.min(m.bot, z.bot); m.score += z.score; if (!m.tfs.includes(z.tfs[0])) m.tfs.push(z.tfs[0]); }
+    else out.push({ ...z, tfs: [...z.tfs] });
+  }
+  const price = data[tf].k[data[tf].k.length - 1].c;
+  const dedupe = arr => arr.reduce((acc, z) => {
+    const m = acc.find(c => z.bot <= c.top && z.top >= c.bot);
+    if (!m) acc.push(z);
+    else if (z.score > m.score) acc[acc.indexOf(m)] = { ...z, score: z.score + m.score, tfs: [...new Set([...z.tfs, ...m.tfs])] };
+    else { m.score += z.score; m.tfs = [...new Set([...m.tfs, ...z.tfs])]; }
+    return acc;
+  }, []);
+  const dem = dedupe(out.filter(z => z.type === 'D' && z.bot < price).sort((a, b) => b.top - a.top)).slice(0, 3);
+  const sup = dedupe(out.filter(z => z.type === 'S' && z.top > price).sort((a, b) => a.bot - b.bot)).slice(0, 3);
+  return { dem, sup, price, A };
+}
+const stars = s => '★'.repeat(Math.max(1, Math.min(5, Math.round(s / 2))));
+
+/* ---------- fibonacci ---------- */
+function fib() {
+  const k = data['4h'].closed.slice(-120);
+  let hi = -Infinity, lo = Infinity, hiI = 0, loI = 0;
+  k.forEach((x, i) => { if (x.h > hi) { hi = x.h; hiI = i; } if (x.l < lo) { lo = x.l; loI = i; } });
+  const up = loI < hiI, R = hi - lo;
+  const lv = [0.236, 0.382, 0.5, 0.618, 0.786].map(r => ({ r, p: up ? hi - r * R : lo + r * R }));
+  return { up, hi, lo, lv };
+}
+
+/* ---------- projection ---------- */
+function erf(x) { const s = Math.sign(x); x = Math.abs(x); const t = 1 / (1 + 0.3275911 * x); return s * (1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x)); }
+const Phi = x => 0.5 * (1 + erf(x / Math.SQRT2));
+function projection(t, mtf) {
+  const d = data[t], k = d.closed, I = d.I, n = k.length, N = 20;
+  const ys = k.slice(-50).map(x => x.c), m = ys.length, xm = (m - 1) / 2, ym = ys.reduce((a, b) => a + b, 0) / m;
+  let num = 0, den = 0; ys.forEach((y, i) => { num += (i - xm) * (y - ym); den += (i - xm) ** 2; });
+  const slope = num / den;
+  const diffs = k.slice(-101).map((x, i, a) => i ? x.c - a[i - 1].c : 0).slice(1);
+  const sigma = Math.sqrt(diffs.reduce((a, b) => a + b * b, 0) / diffs.length);
+  const A = I.atr[n - 1], drift = 0.5 * slope + 0.1 * A * (mtf / 100);
+  const live = d.k[d.k.length - 1], p0 = live.c, t0 = live.t;
+  const pts = []; for (let j = 0; j <= N; j++) pts.push({ t: t0 + j * TF_SEC[t], c: p0 + drift * j, u: p0 + drift * j + sigma * Math.sqrt(j), l: p0 + drift * j - sigma * Math.sqrt(j) });
+  const end = pts[N];
+  return { N, pts, end, pUp: Phi((drift * N) / (sigma * Math.sqrt(N))), hours: N * TF_SEC[t] / 3600, p0 };
+}
+
+/* ---------- news ---------- */
+const FF_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+let news = [];
+async function loadNews() {
+  for (const u of ['news.json?' + Math.floor(Date.now() / 600000), 'https://api.allorigins.win/raw?url=' + encodeURIComponent(FF_URL)]) {
+    try { const r = await fetch(u, { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (Array.isArray(j) && j.length) { news = j; return; } } } catch (e) {}
+  }
+}
+const NEWS_AR = [
+  [/Non-Farm Employment/i, 'الوظائف غير الزراعية (NFP)'], [/Unemployment Rate/i, 'معدل البطالة'], [/Unemployment Claims/i, 'طلبات إعانة البطالة'],
+  [/Core CPI/i, 'التضخم الأساسي (Core CPI)'], [/CPI/i, 'التضخم (CPI)'], [/Core PCE/i, 'التضخم PCE الأساسي'], [/PCE/i, 'التضخم PCE'], [/PPI/i, 'أسعار المنتجين (PPI)'],
+  [/Federal Funds Rate/i, 'قرار الفائدة الأمريكية'], [/FOMC/i, 'الفيدرالي (FOMC)'], [/Fed Chair|Powell/i, 'خطاب رئيس الفيدرالي'],
+  [/Average Hourly Earnings/i, 'متوسط الأجور'], [/GDP/i, 'الناتج المحلي (GDP)'], [/Retail Sales/i, 'مبيعات التجزئة'], [/ISM Manufacturing/i, 'مؤشر الصناعة ISM'],
+  [/ISM Services/i, 'مؤشر الخدمات ISM'], [/JOLTS/i, 'فرص العمل JOLTS'], [/ADP/i, 'وظائف ADP'], [/Inflation Expectations/i, 'توقعات التضخم'],
+  [/Consumer Sentiment|Consumer Confidence/i, 'ثقة المستهلك'], [/Election/i, 'الانتخابات الأمريكية'], [/Speaks/i, 'خطاب مسؤول']
+];
+function newsInfo(title) {
+  const ar = (NEWS_AR.find(([r]) => r.test(title)) || [0, title])[1];
+  if (/FOMC|Federal Funds|Fed Chair|Powell/i.test(title)) return { ar, sign: 0, eff: 'تشدد أو رفع فائدة ← الذهب ينزل. تلميح لخفض الفائدة ← الذهب يطلع. تذبذب قوي جداً.' };
+  if (/Unemployment/i.test(title)) return { ar, sign: -1, eff: 'إذا طلع أعلى من التوقع ← اقتصاد أضعف ← الذهب غالباً يطلع. أقل ← الذهب ينزل.' };
+  if (/CPI|PPI|PCE|Earnings|Inflation/i.test(title)) return { ar, sign: 1, eff: 'أعلى من التوقع ← الفيدرالي بيضل متشدد والدولار يقوى ← الذهب غالباً ينزل. أقل ← الذهب يطلع.' };
+  if (/Non-Farm|Employment|JOLTS|ADP|Retail|GDP|PMI|Sentiment|Confidence|Durable|Housing|Sales|Claims/i.test(title)) return { ar, sign: 1, eff: 'أقوى من التوقع ← الدولار يقوى ← الذهب ينزل. أضعف ← الذهب يطلع.' };
+  if (/Election|Speaks|Testif/i.test(title)) return { ar, sign: 0, eff: 'عدم يقين ← الذهب كملاذ آمن ممكن يطلع، مع حركة قوية بالاتجاهين.' };
+  return { ar, sign: 0, eff: 'ممكن يحرّك الدولار والذهب.' };
+}
+const numOf = s => { const v = parseFloat(String(s).replace(/[%KMB,]/g, '')); return isNaN(v) ? null : v; };
+const WD = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+function fmtIn(min) {
+  if (min < 0) return `صار من ${Math.round(-min)} د`;
+  if (min < 60) return `بعد ${Math.round(min)} د`;
+  if (min < 1440) return `بعد ${Math.floor(min / 60)} س ${Math.round(min % 60)} د`;
+  return `بعد ${Math.round(min / 1440)} يوم`;
+}
+function upcomingNews() {
+  const now = Date.now();
+  return news.filter(e => e.country === 'USD' && (e.impact === 'High' || e.impact === 'Medium'))
+    .map(e => ({ ...e, ts: new Date(e.date).getTime() })).filter(e => e.ts > now - 3 * 3600e3).sort((a, b) => a.ts - b.ts);
+}
+function newsRisk() {
+  const now = Date.now();
+  return upcomingNews().find(e => e.impact === 'High' && e.ts - now < 60 * 60e3 && now - e.ts < 30 * 60e3);
+}
+function renderNews() {
+  const ev = upcomingNews().slice(0, 10);
+  if (!ev.length) { $('news').innerHTML = '<div class="mut">ما قدرنا نجيب الأخبار هلّق.</div>'; return; }
+  $('news').innerHTML = ev.map(e => {
+    const info = newsInfo(e.title), dt = new Date(e.ts), f = numOf(e.forecast), p = numOf(e.previous);
+    let exp = '';
+    if (info.sign && f !== null && p !== null && f !== p) {
+      const g = -info.sign * Math.sign(f - p);
+      exp = `<br>📌 التوقع (${e.forecast}) ${f > p ? 'أعلى' : 'أقل'} من السابق (${e.previous}): إذا تحقق بيميل لـ <b class="${g > 0 ? 'up' : 'down'}">${g > 0 ? 'صعود' : 'هبوط'} الذهب</b>.`;
+    }
+    return `<div class="ev"><div class="imp ${e.impact}"></div><div style="flex:1">
+      <div><b>${info.ar}</b> <span class="mut" style="font-size:12px">${e.title}</span></div>
+      <div class="t">${WD[dt.getDay()]} <span class="num">${dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span> · ${fmtIn((e.ts - Date.now()) / 60000)}${e.forecast ? ` · توقع: <span class="num">${e.forecast}</span>` : ''}${e.previous ? ` · سابق: <span class="num">${e.previous}</span>` : ''}</div>
+      <div class="eff">${info.eff}${exp}</div></div></div>`;
+  }).join('');
+}
+
+/* ---------- written analysis ---------- */
+const TR_AR = { 1: '<span class="up">صاعد</span>', '-1': '<span class="down">هابط</span>', 0: 'عرضي' };
+function buildAnalysis(sig, mtf) {
+  const d = data[tf], I = d.I, i = d.closed.length - 1, price = d.k[d.k.length - 1].c;
+  const Z = allZones(), F = fib(), P = projection(tf, mtf), risk = newsRisk(), nextHigh = upcomingNews().find(e => e.impact === 'High' && e.ts > Date.now());
+  const trends = TFS.map(t => `${TF_AR[t]}: ${TR_AR[trendDir(data[t].I, data[t].closed.length - 1)]}`).join(' · ');
+  const r = I.r[i], rTxt = r > 70 ? 'تشبّع شراء (ممكن تصحيح نزول)' : r < 30 ? 'تشبّع بيع (ممكن ارتداد طلوع)' : r > 55 ? 'زخم إيجابي' : r < 45 ? 'زخم سلبي' : 'محايد';
+  const D0 = Z.dem[0], S0 = Z.sup[0], D1 = Z.dem[1], S1 = Z.sup[1];
+  const z = x => `<span class="num">${f2(x.bot)} – ${f2(x.top)}</span>`;
+  const gz = F.lv.filter(l => l.r === 0.5 || l.r === 0.618).map(l => l.p).sort((a, b) => a - b);
+  const p = [];
+  p.push(`<p>📈 <b>الاتجاه:</b> ${trends}.</p>`);
+  p.push(`<p>⚡ <b>الزخم (${TF_AR[tf]}):</b> RSI <span class="num">${f2(r)}</span> ${rTxt}، MACD ${I.hist[i] > I.hist[i - 1] ? 'عم يقوى للطلوع' : 'عم يضعف/ينزل'}، والترند ${I.adx[i] > 25 ? 'قوي' : I.adx[i] < 20 ? 'ضعيف (السوق متذبذب)' : 'متوسط'} (ADX <span class="num">${f2(I.adx[i])}</span>).</p>`);
+  p.push(`<p>🎯 <b>المناطق:</b> أقرب منطقة شراء ${D0 ? z(D0) + ' ' + stars(D0.score) : '—'}، وأقرب منطقة بيع ${S0 ? z(S0) + ' ' + stars(S0.score) : '—'}. ${F.up ? 'آخر موجة صاعدة' : 'آخر موجة هابطة'}، والمنطقة الذهبية لفيبوناتشي (50–61.8%) بين <span class="num">${f2(gz[0])} – ${f2(gz[1])}</span>.</p>`);
+  const dirTxt = P.end.c > P.p0 ? 'طلوع' : 'نزول';
+  p.push(`<p>🔮 <b>التوقع للـ ${P.N} شمعة الجاية (حوالي ${P.hours >= 24 ? (P.hours / 24).toFixed(0) + ' يوم' : P.hours.toFixed(0) + ' ساعة'}):</b> الميل نحو ال${dirTxt}، المستوى المتوقع حوالي <span class="num">${f2(P.end.c)}</span>، والنطاق المرجّح (احتمال ~68%) بين <span class="num">${f2(P.end.l)} – ${f2(P.end.u)}</span>. احتمال إنو يسكّر أعلى من هلّق: <b class="num">${(P.pUp * 100).toFixed(0)}%</b>. (الخط المتقطع عالشارت)</p>`);
+  const nextSup = S0 && Z.sup.find(s => s.bot > S0.top), nextDem = D0 && Z.dem.find(s => s.top < D0.bot);
+  const bullT = nextSup ? nextSup.bot : S0 ? S0.top + 2 * Z.A : price + 3 * Z.A, bearT = nextDem ? nextDem.top : D0 ? D0.bot - 2 * Z.A : price - 3 * Z.A;
+  p.push(`<p>🟢 <b>سيناريو الصعود:</b> ${S0 ? `إذا اخترق وثبّت فوق <span class="num">${f2(S0.top)}</span>` : 'إذا كمّل فوق القمة الأخيرة'} ← الهدف الجاي <span class="num">${f2(bullT)}</span>.<br>
+    🔴 <b>سيناريو الهبوط:</b> ${D0 ? `إذا كسر ونزل تحت <span class="num">${f2(D0.bot)}</span>` : 'إذا كسر القاع الأخير'} ← الهدف الجاي <span class="num">${f2(bearT)}</span>.<br>
+    ↔️ <b>بين المنطقتين:</b> الشراء من منطقة الطلب والبيع من منطقة العرض، مع وقف خسارة ورا المنطقة.</p>`);
+  if (risk) p.push(`<p>📰 <b>خبر قوي ${fmtIn((risk.ts - Date.now()) / 60000)}:</b> ${newsInfo(risk.title).ar}. لا تفوت صفقات جديدة هلّق.</p>`);
+  else if (nextHigh) p.push(`<p>📰 <b>أقرب خبر قوي:</b> ${newsInfo(nextHigh.title).ar} ${fmtIn((nextHigh.ts - Date.now()) / 60000)}. انتبه قبل بساعة.</p>`);
+  let concl;
+  if (risk) concl = 'استنّى لحتى يطلع الخبر ويهدا السوق (15–30 دقيقة)، بعدين شوف ردة الفعل على المناطق.';
+  else if (sig === 'BUY') concl = D0 ? `الاتجاه العام للطلوع. أفضل دخول شراء من رجوع السعر لمنطقة <span class="num">${f2(D0.bot)} – ${f2(D0.top)}</span> بدل ما تلحق السعر فوق.` : 'الاتجاه للطلوع، بس انتبه لوقف الخسارة.';
+  else if (sig === 'SELL') concl = S0 ? `الاتجاه العام للنزول. أفضل دخول بيع من رجوع السعر لمنطقة <span class="num">${f2(S0.bot)} – ${f2(S0.top)}</span> بدل ما تبيع تحت.` : 'الاتجاه للنزول، بس انتبه لوقف الخسارة.';
+  else concl = 'السوق مش واضح هلّق. ما تفوت بالنص. راقب ردة فعل السعر على أقرب منطقة شراء أو بيع، ويلي بيمسك منهن هو الإشارة.';
+  p.push(`<p>✅ <b>الخلاصة:</b> ${concl}</p>`);
+  $('analysis').innerHTML = p.join('');
+
+  $('zones').innerHTML = '<tr><th>النوع</th><th>المنطقة</th><th>القوة</th><th>البعد</th></tr>' +
+    [...Z.sup.slice().reverse(), ...Z.dem].map(x => `<tr class="zone-${x.type}"><td>${x.type === 'D' ? 'شراء 🟢' : 'بيع 🔴'}</td><td class="num">${f2(x.bot)} – ${f2(x.top)}</td><td>${stars(x.score)} <span class="mut" style="font-size:11px">${x.tfs.map(t => TF_AR[t]).join('/')}</span></td><td class="num">${f2(x.type === 'D' ? price - x.top : x.bot - price)}</td></tr>`).join('');
+
+  const h4 = trendDir(data['4h'].I, data['4h'].closed.length - 1), ideas = [];
+  if (D0) { const e = D0.top, sl = D0.bot - 0.25 * Z.A, tp = S0 ? S0.bot : e + 3 * (e - sl); ideas.push({ dir: 1, e, sl, tp, rr: (tp - e) / (e - sl) }); }
+  if (S0) { const e = S0.bot, sl = S0.top + 0.25 * Z.A, tp = D0 ? D0.top : e - 3 * (sl - e); ideas.push({ dir: -1, e, sl, tp, rr: (e - tp) / (sl - e) }); }
+  $('ideas').innerHTML = ideas.map(x => `<div class="idea ${x.dir === h4 ? 'pref' : ''}">
+    <b class="${x.dir > 0 ? 'up' : 'down'}">${x.dir > 0 ? 'شراء Limit' : 'بيع Limit'}</b> ${x.dir === h4 ? '⭐ مع الترند' : h4 ? '<span class="mut">(عكس الترند: مخاطرة أعلى)</span>' : ''}<br>
+    دخول <span class="num">${f2(x.e)}</span> · وقف <span class="num down">${f2(x.sl)}</span> · هدف <span class="num up">${f2(x.tp)}</span> · ربح:خسارة <b class="num">1:${x.rr.toFixed(1)}</b>
+    ${x.rr < 1.5 ? '<br><span class="mut">⚠️ نسبة الربح للخسارة ضعيفة، الأفضل تتركها.</span>' : ''}</div>`).join('') || '<div class="mut">ما في مناطق واضحة قريبة.</div>';
+
+  $('fib').innerHTML = `<tr><td>${F.up ? 'القاع' : 'القمة'} (بداية الموجة)</td><td>${f2(F.up ? F.lo : F.hi)}</td></tr>` +
+    F.lv.map(l => `<tr><td>${(l.r * 100).toFixed(1)}%${l.r === 0.5 || l.r === 0.618 ? ' ⭐' : ''}</td><td>${f2(l.p)}</td></tr>`).join('') +
+    `<tr><td>${F.up ? 'القمة' : 'القاع'} (نهاية الموجة)</td><td>${f2(F.up ? F.hi : F.lo)}</td></tr>`;
+
+  drawOverlays(Z, P);
+  return { Z, F, P, risk };
+}
+let zoneLines = [];
+function drawOverlays(Z, P) {
+  zoneLines.forEach(l => candle.removePriceLine(l)); zoneLines = [];
+  for (const x of [...Z.dem.slice(0, 2), ...Z.sup.slice(0, 2)]) {
+    const col = x.type === 'D' ? 'rgba(34,197,94,0.8)' : 'rgba(239,68,68,0.8)';
+    zoneLines.push(candle.createPriceLine({ price: x.top, color: col, lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: x.type === 'D' ? 'شراء ' + stars(x.score) : '' }));
+    zoneLines.push(candle.createPriceLine({ price: x.bot, color: col, lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: x.type === 'S' ? 'بيع ' + stars(x.score) : '' }));
+  }
+  projC.setData(P.pts.map(q => ({ time: q.t + tzOff, value: q.c })));
+  projU.setData(P.pts.map(q => ({ time: q.t + tzOff, value: q.u })));
+  projL.setData(P.pts.map(q => ({ time: q.t + tzOff, value: q.l })));
+}
+
+/* ---------- render ---------- */
+function render() {
+  const d = data[tf]; if (!d) return;
+  const I = d.I, i = d.closed.length - 1;
+  const cur = scoreAt(I, i);
+  let tot = 0, wsum = 0, pills = '';
+  for (const t of TFS) {
+    if (!data[t]) continue;
+    const s = scoreAt(data[t].I, data[t].closed.length - 1).s; if (isNaN(s)) continue;
+    tot += s * TF_W[t]; wsum += TF_W[t];
+    pills += `<span class="pill ${s > 10 ? 'up' : s < -10 ? 'down' : ''}">${TF_AR[t]}: <span class="num">${s > 0 ? '+' : ''}${s.toFixed(0)}</span></span>`;
+  }
+  const mtf = wsum ? tot / wsum : 0;
+  const h4 = data['4h'] ? scoreAt(data['4h'].I, data['4h'].closed.length - 1).s : 0;
+  let sig = 'WAIT';
+  if (mtf >= TH && cur.s > 0 && h4 > -20) sig = 'BUY';
+  else if (mtf <= -TH && cur.s < 0 && h4 < 20) sig = 'SELL';
+  const risk = newsRisk();
+  if (risk) sig = 'WAIT';
+  const conf = Math.min(100, Math.abs(mtf));
+  $('sigbox').className = 'sig ' + sig;
+  $('sig').textContent = { BUY: 'شراء BUY', SELL: 'بيع SELL', WAIT: 'انتظر WAIT' }[sig];
+  $('sigtxt').textContent = risk ? `في خبر قوي (${newsInfo(risk.title).ar}) ${fmtIn((risk.ts - Date.now()) / 60000)}. ما تفوت هلّق.`
+    : sig === 'WAIT' ? 'الفريمات مش متفقة كفاية. الأفضل ما تفوت هلّق.' : `الفريمات متفقة على ${sig === 'BUY' ? 'الصعود' : 'الهبوط'}. التزم بوقف الخسارة.`;
+  $('newsbanner').style.display = risk ? 'block' : 'none';
+  if (risk) $('newsbanner').innerHTML = `⚠️ خبر أحمر: ${newsInfo(risk.title).ar} ${fmtIn((risk.ts - Date.now()) / 60000)}. السوق ممكن يتحرك بقوة وبسرعة بالاتجاهين.`;
+  $('conf').textContent = conf.toFixed(0) + '%'; $('confbar').style.width = conf + '%';
+  $('mtf').innerHTML = '<div class="mut">نقاط كل فريم (+100 صعود قوي، −100 هبوط قوي):</div>' + pills;
+
+  const price = d.k[d.k.length - 1].c, atr = I.atr[i], dir = sig === 'SELL' ? -1 : 1;
+  const sl = price - dir * SL_ATR * atr, tp1 = price + dir * TP1_ATR * atr, tp2 = price + dir * TP2_ATR * atr;
+  $('levels').innerHTML = sig === 'WAIT'
+    ? `<tr><td>السعر (PAXG)</td><td>${f2(price)}</td></tr><tr><td>متوسط الحركة ATR</td><td>${f2(atr)}</td></tr><tr><td>دعم (بولنجر السفلي)</td><td>${f2(I.lo[i])}</td></tr><tr><td>مقاومة (بولنجر العلوي)</td><td>${f2(I.up[i])}</td></tr>`
+    : `<tr><td>الدخول</td><td>${f2(price)}</td></tr><tr><td>وقف الخسارة SL</td><td class="down">${f2(sl)}</td></tr><tr><td>الهدف الأول TP1 (1:1)</td><td class="up">${f2(tp1)}</td></tr><tr><td>الهدف الثاني TP2 (1:2)</td><td class="up">${f2(tp2)}</td></tr>`;
+  d.plan = { sig, price, sl, tp1, tp2, atr, mtf, cur: cur.s };
+
+  $('tfname').textContent = TF_AR[tf];
+  const row = (n, v, c) => `<tr><td>${n}</td><td class="num ${c || ''}">${v}</td></tr>`;
+  $('ind').innerHTML =
+    row('RSI (14)', f2(I.r[i]), I.r[i] > 55 ? 'up' : I.r[i] < 45 ? 'down' : '') +
+    row('MACD / Signal', `${f2(I.macd[i])} / ${f2(I.sig[i])}`, I.hist[i] > 0 ? 'up' : 'down') +
+    row('EMA 20 / 50 / 200', `${f2(I.e20[i])} / ${f2(I.e50[i])} / ${f2(I.e200[i])}`) +
+    row('ADX (قوة الترند)', f2(I.adx[i]), I.adx[i] > 25 ? 'up' : '') +
+    row('+DI / -DI', `${f2(I.pdi[i])} / ${f2(I.mdi[i])}`, I.pdi[i] > I.mdi[i] ? 'up' : 'down') +
+    row('Bollinger', `${f2(I.lo[i])} – ${f2(I.up[i])}`) +
+    row('ATR (14)', f2(atr)) +
+    `<tr><td colspan="2" class="mut">${cur.why.filter(w => w[1] !== 0 || w[0].startsWith('ADX')).map(w => `${w[0]} <span class="num ${w[1] > 0 ? 'up' : w[1] < 0 ? 'down' : ''}">${w[1] > 0 ? '+' : ''}${w[1] || ''}</span>`).join(' · ')}</td></tr>`;
+
+  const b = backtest(tf);
+  const good = TFS.filter(t => data[t] && (() => { const x = backtest(t); return x.n >= 10 && x.pf > 1.2; })());
+  if (b.pf < 1 || b.n < 10) {
+    $('sigtxt').innerHTML += `<br><b style="color:#f59e0b">⚠️ هالفريم خسران بالاختبار التاريخي. ${good.length ? 'الفريمات الرابحة: ' + good.map(t => TF_AR[t]).join('، ') : ''}</b>`;
+  }
+  $('bt').innerHTML = [
+    ['عدد الصفقات', b.n], ['نسبة النجاح', b.win.toFixed(0) + '%'], ['صافي الربح (R)', (b.R >= 0 ? '+' : '') + b.R.toFixed(1) + 'R'],
+    ['Profit Factor', isFinite(b.pf) ? b.pf.toFixed(2) : '—'], ['أكبر تراجع', '-' + b.dd.toFixed(1) + 'R'], ['المدة', b.days.toFixed(0) + ' يوم']
+  ].map(([a, v]) => `<div class="stat"><span class="mut">${a}</span><b>${v}</b></div>`).join('') +
+    `<div class="mut" style="grid-column:1/-1">1R = المبلغ يلي بتخاطر فيه بالصفقة. الهدف 2R ووقف الخسارة 1R، يعني بتكفي نسبة نجاح فوق 34% لتكون رابح.</div>`;
+  calc(); drawChart();
+  try { d.extra = buildAnalysis(sig, mtf); } catch (e) { console.error(e); $('analysis').textContent = 'ما قدر يكمّل التحليل: ' + e.message; }
+  renderNews();
+
+  if (localStorage.getItem('notify') !== '0' && lastSig && lastSig !== sig + tf && sig !== 'WAIT' && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification('Gold AI: ' + sig, { body: `${TF_AR[tf]} — دخول ${f2(price)} | SL ${f2(sl)} | TP ${f2(tp2)}`, icon: 'icon-192.png' });
+  }
+  lastSig = sig + tf; localStorage.setItem('lastSig', lastSig);
+}
+function calc() {
+  const p = data[tf] && data[tf].plan; if (!p) return;
+  const bal = +$('bal').value || 0, risk = +$('risk').value || 0;
+  const riskUSD = bal * risk / 100, dist = SL_ATR * p.atr, oz = dist ? riskUSD / dist : 0, lots = oz / 100;
+  $('calc').innerHTML = `<tr><td>المبلغ المعرّض للخسارة</td><td class="num">$${f2(riskUSD)}</td></tr>
+    <tr><td>مسافة وقف الخسارة</td><td class="num">$${f2(dist)}</td></tr>
+    <tr><td>حجم الصفقة</td><td class="num"><b>${lots.toFixed(2)} lot</b> (${oz.toFixed(2)} oz)</td></tr>
+    <tr><td>الربح إذا وصل TP2</td><td class="num up">+$${f2(riskUSD * TP2_ATR / SL_ATR)}</td></tr>
+    <tr><td colspan="2" class="mut">1 lot ذهب = 100 أونصة. إذا الحجم أصغر من 0.01، رأس المال صغير على هالمخاطرة.</td></tr>`;
+}
+
+/* ---------- AI ---------- */
+async function runAI() {
+  const key = localStorage.getItem('aiKey'); if (!key) { openSettings(); return; }
+  const base = (localStorage.getItem('aiUrl') || 'https://api.openai.com/v1').replace(/\/$/, '');
+  const model = localStorage.getItem('aiModel') || 'gpt-4o-mini';
+  const snap = {};
+  for (const t of TFS) {
+    if (!data[t]) continue; const I = data[t].I, i = data[t].closed.length - 1, k = data[t].closed;
+    snap[t] = { close: +f2(I.c[i]), rsi: +f2(I.r[i]), macd_hist: +I.hist[i].toFixed(3), ema20: +f2(I.e20[i]), ema50: +f2(I.e50[i]), ema200: +f2(I.e200[i]), adx: +f2(I.adx[i]), plusDI: +f2(I.pdi[i]), minusDI: +f2(I.mdi[i]), bb_low: +f2(I.lo[i]), bb_up: +f2(I.up[i]), atr: +f2(I.atr[i]), score: +scoreAt(I, i).s.toFixed(0), last10_closes: k.slice(-10).map(x => +x.c.toFixed(2)), high_50: +Math.max(...k.slice(-50).map(x => x.h)).toFixed(2), low_50: +Math.min(...k.slice(-50).map(x => x.l)).toFixed(2) };
+  }
+  const plan = data[tf].plan, bt = backtest(tf), ex = data[tf].extra || {};
+  const zs = ex.Z ? { buy_zones: ex.Z.dem.map(z => [+f2(z.bot), +f2(z.top), z.score]), sell_zones: ex.Z.sup.map(z => [+f2(z.bot), +f2(z.top), z.score]) } : {};
+  const nx = upcomingNews().filter(e => e.ts > Date.now()).slice(0, 5).map(e => `${e.title} (${e.impact}) ${new Date(e.ts).toISOString()} forecast ${e.forecast || '-'} prev ${e.previous || '-'}`);
+  const pj = ex.P ? `توقع إحصائي لـ ${ex.P.N} شمعة: ${f2(ex.P.end.c)} (نطاق ${f2(ex.P.end.l)}–${f2(ex.P.end.u)})، احتمال الصعود ${(ex.P.pUp * 100).toFixed(0)}%` : '';
+  const prompt = `أنت محلل فني محترف لسوق الذهب XAU/USD. هذه بيانات حقيقية الآن (السعر الفوري ${spot ? f2(spot) : 'غير متوفر'}):
+${JSON.stringify(snap)}
+إشارة النظام على فريم ${tf}: ${plan.sig}، دخول ${f2(plan.price)}، SL ${f2(plan.sl)}، TP1 ${f2(plan.tp1)}، TP2 ${f2(plan.tp2)}، نقاط التوافق ${plan.mtf.toFixed(0)}.
+نتيجة اختبار النظام على الماضي: ${bt.n} صفقة، نسبة نجاح ${bt.win.toFixed(0)}%، صافي ${bt.R.toFixed(1)}R.
+مناطق العرض والطلب [من، إلى، قوة]: ${JSON.stringify(zs)}
+${pj}
+الأخبار الأمريكية الجاية (الوقت UTC): ${nx.join(' | ') || 'لا يوجد'}
+اكتب باللهجة اللبنانية وباختصار (حوالي 200 كلمة):
+1) الاتجاه العام على كل فريم.
+2) أهم مناطق الشراء والبيع ومستويات الدعم والمقاومة.
+3) كيف تتوقع تكون حركة السعر بالأيام الجاية (سيناريو أساسي وسيناريو بديل مع المستويات).
+4) تأثير الأخبار الجاية على الذهب ومتى لازم ينتبه.
+5) هل توافق على إشارة النظام أم لا ولماذا، وأفضل نقطة دخول ووقف وهدف.
+كن صريحاً: إذا الصورة غير واضحة قل "انتظر". لا تعد بنتائج مضمونة.`;
+  $('ai').textContent = '⏳ عم يحلل...';
+  try {
+    const r = await fetch(base + '/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.3 })
+    });
+    const j = await r.json();
+    $('ai').textContent = j.choices ? j.choices[0].message.content : ('خطأ: ' + (j.error && j.error.message || r.status));
+  } catch (e) { $('ai').textContent = 'ما قدر يوصل لخدمة الـ AI: ' + e.message; }
+}
+
+/* ---------- settings ---------- */
+function openSettings() { $('k').value = localStorage.getItem('aiKey') || ''; $('u').value = localStorage.getItem('aiUrl') || ''; $('m').value = localStorage.getItem('aiModel') || ''; $('n').value = localStorage.getItem('notify') || '1'; $('settings').classList.add('show'); }
+function closeSettings() { $('settings').classList.remove('show'); }
+function saveSettings() {
+  localStorage.setItem('aiKey', $('k').value.trim()); localStorage.setItem('aiUrl', $('u').value.trim()); localStorage.setItem('aiModel', $('m').value.trim()); localStorage.setItem('notify', $('n').value);
+  if ($('n').value === '1' && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  closeSettings();
+}
+
+/* ---------- main loop ---------- */
+async function refreshAll() {
+  $('status').textContent = '⟳';
+  try { await Promise.all([...TFS.map(loadTF), loadNews()]); await loadSpot(); render(); $('status').textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
+  catch (e) { $('status').textContent = '⚠️ ما في انترنت'; }
+}
+document.querySelectorAll('#tfs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tfs button').forEach(x => x.classList.remove('on')); b.classList.add('on'); tf = b.dataset.tf; render(); chart.timeScale().fitContent();
+});
+$('bal').oninput = $('risk').oninput = calc;
+initChart();
+refreshAll().then(() => chart.timeScale().scrollToRealTime());
+setInterval(loadSpot, 15000);
+setInterval(refreshAll, 60000);
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
